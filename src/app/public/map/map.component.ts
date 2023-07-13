@@ -1,4 +1,4 @@
-import { AfterViewInit, Component } from '@angular/core';
+import { AfterViewInit, OnInit, Component } from '@angular/core';
 import * as L from 'leaflet';
 
 @Component({
@@ -7,13 +7,62 @@ import * as L from 'leaflet';
   styleUrls: ['./map.component.css']
 })
 
-export class MapComponent implements AfterViewInit {
-  private map:any;
-   ngAfterViewInit(): void {
-    this.initMap();
-    this.addAreas()
+export class MapComponent implements AfterViewInit, OnInit {
+
+  marker!: L.Marker;
+  location: any;
+  corord!: number[];
+  retryCount: any;
+  ngOnInit(): void {
+    this.getLocation()
   }
-  
+  private map: any;
+  ngAfterViewInit(): void {
+    this.initMap();
+    this.addAreas();
+  }
+  getLocation(desiredAccuracy : number  =100) {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(position => {
+        
+       
+        if (position.coords.accuracy>=desiredAccuracy) {
+          
+          
+          // Retry with an increasing delay
+          const retryDelay = 1000; // exponential backoff
+          setTimeout(() => {
+            this.retryCount++;
+            this.getLocation(desiredAccuracy);
+          }, retryDelay);
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          const circle = L.circle([latitude, longitude], {
+            radius: position.coords.accuracy, // use the accuracy from the geolocation position
+            color: 'blue',
+            fillColor: '#C1E9FB',
+            fillOpacity: 0.1,
+          }).addTo(this.map);
+        }
+        else{
+          const latitude = position.coords.latitude;
+          const longitude = position.coords.longitude;
+          this.showLocationOnMap(latitude, longitude);
+          const circle = L.circle([latitude, longitude], {
+            radius: position.coords.accuracy, // use the accuracy from the geolocation position
+            color: 'blue',
+            fillColor: '#C1E9FB',
+            fillOpacity: 0.1,
+          }).addTo(this.map);
+          console.log(position)
+        }
+        
+      });
+    } else {
+      alert('Geolocation is not supported by this browser.');
+    }
+  }
+
   private addAreas(): void {
     // Define the coordinates for Casablanca and Bouskoura polygons
     const casablancaCoords: L.LatLngExpression[] = [
@@ -24,23 +73,21 @@ export class MapComponent implements AfterViewInit {
       [33.317308, -7.564375],
       [33.374668, -7.757322],
       [33.358038, -7.801267],
-      
+
       [33.463502, -7.989408],
-  
+
     ];
 
-    
-
     // Create polygons for Casablanca and Bouskoura
-    const casablancaPolygon = L.polygon(casablancaCoords, { color: 'red' }).addTo(this.map);
-    
+    // const casablancaPolygon = L.polygon(casablancaCoords, { color: 'red' }).addTo(this.map);
+
     // Zoom the map to show both polygons
-    const polygonsGroup = L.featureGroup([casablancaPolygon]);
-    this.map.fitBounds(casablancaPolygon.getBounds());
-    }
+    // const polygonsGroup = L.featureGroup([casablancaPolygon]);
+    // this.map.fitBounds(casablancaPolygon.getBounds());
+  }
 
 
-  private initMap(): void { 
+  private initMap(): void {
     const coordinates: L.LatLngExpression[] = [
       [33.622601, -7.657072], // Coordinates for Casablanca polygon vertices
       [33.760287, -7.385160],
@@ -51,50 +98,86 @@ export class MapComponent implements AfterViewInit {
       [33.463502, -7.989408],
       // Add more coordinates as needed
     ];
-    var southWest = L.latLng(33.561399, -7.628533); // Example coordinates for the southwest corner
-    var northEast = L.latLng(33.561399, -7.628533); // Example coordinates for the northeast corner
     var bounds = L.latLngBounds(coordinates);
-    // var bounds = L.latLngBounds(southWest, northEast);
-   
-   
+
+
+
     this.map = L.map('map', {
       center: [33.593006, -7.608878],
-      minZoom:10,
+      minZoom: 10,
       // maxZoom:40,
       maxBounds: bounds,
       maxBoundsViscosity: 3.0
-    }).setView([33.439726, -7.622525],11);
-    
+    }).setView([33.439726, -7.622525], 11);
+
     this.map.panInsideBounds(bounds, { animate: false });
     const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       maxZoom: 18,
       minZoom: 3,
       attribution: '&copy; Hamza'
     });
-    
-  //   var greenIcon = L.icon({
-  //     iconUrl: 'leaf-green.png',
-  //     shadowUrl: 'leaf-shadow.png',
-  
-  //     iconSize:     [38, 95], // size of the icon
-  //     shadowSize:   [50, 64], // size of the shadow
-  //     iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
-  //     shadowAnchor: [4, 62],  // the same for the shadow
-  //     popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
-  // });
-  L.marker([33.563402, -7.690374]).addTo(this.map)
-    .bindPopup('A pretty CSS popup.<br> Easily customizable.')
-    .openPopup();
-  
-    L.marker([33.559683, -7.736036]).addTo(this.map)
-    .bindPopup('300 bus',{
-      closeOnClick: false,
-      autoClose: false
-    })
-    
-    .openPopup();
+
+
+    // L.marker(location[0], location[1]).addTo(this.map)
+    //   .bindPopup('A pretty CSS popup.<br> Easily customizable.')
+    //   .openPopup();
+
+
+
 
     tiles.addTo(this.map);
   }
+  showLocationOnMap(latitude: number, longitude: number) {
+    if (this.marker) {
+      this.map.removeLayer(this.marker);
+    }
 
+    this.marker = L.marker([latitude, longitude]).addTo(this.map);
+    const icon = L.icon({
+      iconUrl: 'assets/position-icon.png',
+      iconSize: [32, 32], // Adjust the icon size as needed
+      iconAnchor: [16, 32] // Adjust the icon anchor point as needed
+    });
+
+    const markerOptions = {
+      icon: icon
+    };
+    this.map.setView([latitude, longitude], 13);
+     L.marker([latitude, longitude]).addTo(this.map)
+      .bindPopup('my position.')
+      .openPopup();
+  }
+// ==========================================
+getMostAccuratePosition(desiredAccuracy: number, markerOptions: any, attempts = 0): void {
+  if (navigator.geolocation) {
+    navigator.geolocation.getCurrentPosition(
+      (position: any) => {
+        const latitude = position.coords.latitude;
+        const longitude = position.coords.longitude;
+        const accuracy = position.coords.accuracy;
+
+        if (accuracy <= desiredAccuracy) {
+          L.marker([latitude, longitude], markerOptions)
+            .addTo(this.map)
+            .bindPopup('My Position')
+            .openPopup();
+          this.map.setView([latitude, longitude], 13);
+        } else {
+          // Retry with an increasing delay
+          const retryDelay = Math.pow(2, attempts) * 1000; // exponential backoff
+          setTimeout(() => {
+            this.getMostAccuratePosition(desiredAccuracy, markerOptions, attempts + 1);
+          }, retryDelay);
+        }
+      },
+      // (error: PositionError) => {
+      //   console.log('Geolocation error:', error.message);
+      // }
+    );
+  } else {
+    console.log('Geolocation is not supported by this browser.');
+  }
 }
+}
+
+
