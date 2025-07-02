@@ -2,11 +2,14 @@
   "name": "tracking-bus",
   "version": "0.0.0",
   "scripts": {
+    
     "ng": "ng",
     "start": "ng serve",
     "build": "ng build",
     "watch": "ng build --watch --configuration development",
-    "test": "ng test"
+    "test": "ng test",
+    "deploy": "ng build --base-href \"https://Hamza-Eng.github.io/bus-tracking-front/\" && npx angular-cli-ghpages --dir=dist/tracking-bus"
+
   },
   "private": true,
   "dependencies": {
